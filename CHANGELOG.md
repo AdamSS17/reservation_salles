@@ -64,3 +64,17 @@ Séparation des responsabilités (principe SRP de SOLID) : le rôle du validateu
 Comment retourner plusieurs erreurs en une seule fois ?
 En parcourant tous les champs et en accumulant les erreurs dans un tableau ($errors[$champ] = [...]) au lieu de s'arrêter au premier throw rencontré (ce que ferait un simple try/catch unique autour de tout). C'est exactement ce que fait la boucle foreach du code ci-dessus : chaque champ est testé indépendamment, donc un formulaire avec 3 erreurs les affiche toutes les 3 d'un coup, plutôt que de forcer l'utilisateur à corriger un champ à la fois.
 
+Etape6 
+
+Quelle différence existe entre DTO et modèle Eloquent ?
+Le modèle Eloquent (Salle, Reservation) est connecté à la base — il sait faire save(), find(), a des relations, hérite de tout le comportement Active Record. Le DTO est une classe inerte, sans aucun lien avec la base de données : juste des propriétés typées, rien d'autre. Le DTO transporte l'intention ("voici ce que l'utilisateur veut créer"), le modèle représente l'état réel en base.
+
+Pourquoi le DTO ne doit-il pas appeler save() ?
+Parce que ce n'est pas son rôle (principe de responsabilité unique) : un DTO transporte des données, il ne décide pas quand ni comment les persister. C'est le Service (Étape 8) qui orchestre ça — il reçoit le DTO, applique les règles métier, puis appelle le Repository pour sauvegarder. Si le DTO savait "save", il faudrait qu'il connaisse Eloquent, cassant le découplage voulu par cette architecture en couches.
+
+À quel moment transforme-t-on les chaînes en dates ?
+Dans la méthode depuisTableau() du DTO lui-même — c'est exactement le rôle de cette étape de transformation : convertir des données brutes déjà validées (mais encore sous forme de chaînes, car c'est le format de $_POST) en types PHP forts et utilisables (DateTimeImmutable). Après cette conversion, plus aucune couche suivante (Service, Repository) n'a besoin de reparser des chaînes de date.
+
+Le DTO doit-il contenir la règle de chevauchement ?
+Non. Le chevauchement entre deux réservations est une règle métier qui nécessite d'interroger la base de données (comparer avec les réservations existantes) — ce n'est pas une donnée statique qu'on peut vérifier en isolation au moment de construire le DTO. Cette règle appartient au Service (Étape 8), qui a accès au Repository pour faire cette recherche.
+
