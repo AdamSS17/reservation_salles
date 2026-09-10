@@ -50,3 +50,17 @@ Parce que n'importe qui (toi sur un nouvel ordi, ton prof en clonant le dépôt,
 Comment empêcher les doublons ?
 En cherchant d'abord si la donnée existe (via un critère unique — ici le nom de la salle) avant de l'insérer, plutôt que d'insérer aveuglément à chaque exécution. firstOrCreate() (ou updateOrCreate() si tu veux aussi mettre à jour les champs existants) encapsule exactement cette logique.
 
+Etape5
+
+Pourquoi séparer la validation syntaxique des règles métier ?
+La validation syntaxique vérifie la forme des données (un email a bien un @, une capacité est un entier positif) indépendamment du contexte. Les règles métier dépendent de l'état de l'application (est-ce que cette salle précise est active ? y a-t-il un chevauchement avec une réservation existante ?) — ça nécessite d'interroger la base, ce qu'un validateur ne devrait jamais faire. Mélanger les deux rendrait le validateur dépendant de la base de données, et donc impossible à tester isolément.
+
+Pourquoi créer une interface de validation ?
+Pour permettre d'injecter n'importe quelle implémentation (SalleValidator, ReservationValidator, ou même un faux validateur en mémoire pour les tests) partout où ValidatorInterface est attendu, sans que le code appelant ait besoin de connaître la classe concrète. C'est ce qui permettra à PHP-DI (Étape 11) de résoudre automatiquement la bonne implémentation.
+
+Pourquoi le validateur ne doit-il pas enregistrer les données ?
+Séparation des responsabilités (principe SRP de SOLID) : le rôle du validateur est de dire "est-ce correct ou pas", pas d'agir dessus. S'il enregistrait aussi les données, on ne pourrait pas valider sans effet de bord (impossible de tester "est-ce que ce formulaire est valide" sans polluer la base à chaque test), et on casserait le principe qu'une classe ne devrait avoir qu'une seule raison de changer.
+
+Comment retourner plusieurs erreurs en une seule fois ?
+En parcourant tous les champs et en accumulant les erreurs dans un tableau ($errors[$champ] = [...]) au lieu de s'arrêter au premier throw rencontré (ce que ferait un simple try/catch unique autour de tout). C'est exactement ce que fait la boucle foreach du code ci-dessus : chaque champ est testé indépendamment, donc un formulaire avec 3 erreurs les affiche toutes les 3 d'un coup, plutôt que de forcer l'utilisateur à corriger un champ à la fois.
+
