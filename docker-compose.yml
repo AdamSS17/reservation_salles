@@ -1,23 +1,25 @@
 services:
 
-  nginx:
-    image: nginx:alpine
-    restart: always
-    ports:
-      - "8080:80"
-    volumes:
-      - ./:/var/www/html
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - php
-    networks:
-      - app-network
+  # nginx:
+  #   image: nginx:alpine
+  #   restart: always
+  #   ports:
+  #     - "${APP_PORT}:80"
+  #   volumes:
+  #     - ./:/var/www/html
+  #     - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+  #   depends_on:
+  #     - php
+  #   networks:
+  #     - app-network
 
   php:
     build:
       context: .
       dockerfile: app/Dockerfile
     restart: always
+    ports:
+      - "${APP_PORT}:8000" 
     volumes:
       - ./:/var/www/html
       - vendor_data:/var/www/html/vendor
@@ -27,8 +29,11 @@ services:
     env_file:
       - .env
     environment:
-      # Surcharge DB_HOST du .env (127.0.0.1, prévu pour du PHP hors Docker)
-      # par le nom du service Docker, uniquement pour ce conteneur.
+      # DB_HOST reste "db" en dur volontairement : ce n'est pas une valeur
+      # de config qui varie (mot de passe, port...), c'est le NOM DU SERVICE
+      # Docker lui-même, tel que défini juste au-dessus (db:). Le mettre en
+      # variable n'aurait pas de sens : ce nom est fixé par la structure
+      # de ce fichier, pas par l'environnement d'exécution.
       DB_HOST: db
     networks:
       - app-network
@@ -37,12 +42,11 @@ services:
     image: mysql:8.0
     restart: always
     environment:
-      MYSQL_DATABASE: reservation_salles
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"   # correspond à DB_PASSWORD= vide dans .env.example
-      # Pour un usage plus sérieux (recommandé dès que possible),
-      # remplace par MYSQL_ROOT_PASSWORD et mets à jour .env en conséquence.
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ALLOW_EMPTY_PASSWORD: ${MYSQL_ALLOW_EMPTY_PASSWORD}
     ports:
-      - "3306:3306"        # utile pour se connecter avec un client externe (TablePlus, DBeaver...)
+      - "${DB_EXPOSED_PORT}:3306"        # utile pour se connecter avec un client externe (TablePlus, DBeaver...)
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
@@ -53,6 +57,18 @@ services:
     networks:
       - app-network
 
+  # phpmyadmin:
+  #   image: phpmyadmin:latest
+  #   restart: always
+  #   ports:
+  #     - "8081:80"
+  #   environment:
+  #     PMA_HOST: db
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - app-network
+
 networks:
   app-network:
     driver: bridge
@@ -60,3 +76,5 @@ networks:
 volumes:
   db_data:
   vendor_data:
+
+  

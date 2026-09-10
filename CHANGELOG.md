@@ -24,3 +24,20 @@ Dans un seul fichier centralisé (config/database.php), jamais dupliqué ailleur
 
 Quelle différence entre ORM et SQL écrit à la main ?
 Avec du SQL brut, tu écris toi-même INSERT INTO salles (...) VALUES (...). Avec Eloquent, tu écris Salle::create([...]) — Eloquent génère le SQL pour toi, gère les échappements (sécurité contre l'injection SQL), et te retourne des objets PHP au lieu de tableaux bruts.
+
+Etape3
+
+Quel type de relation Eloquent avez-vous utilisé ?
+Une relation un-à-plusieurs (hasMany côté Salle, belongsTo côté Reservation) — une salle peut avoir plusieurs réservations, mais chaque réservation appartient à une seule salle.
+
+Pourquoi déclarer $fillable ?
+Par sécurité : sans ça, Salle::create($_POST) accepterait n'importe quel champ envoyé par un formulaire, y compris des champs qu'on ne veut pas laisser modifier de l'extérieur (par exemple, id ou created_at). $fillable définit une liste blanche explicite.
+
+Pourquoi convertir active en booléen ?
+MySQL stocke ce champ comme TINYINT(1) (0 ou 1) en interne. Sans $casts, $salle->active renverrait 1 ou 0 (un entier), et if ($salle->active) fonctionnerait presque par accident. Avec le cast, tu obtiens un vrai true/false PHP, plus lisible et plus sûr pour les comparaisons strictes (===).
+
+Pourquoi convertir les dates en objets ?
+Parce que manipuler des chaînes de caractères pour des comparaisons de dates est source d'erreurs ("2026-09-10 10:00:00" < "2026-09-10 09:00:00" compare du texte, pas des dates). Avec datetime en cast, date_debut devient un objet Carbon qui offre des méthodes fiables comme ->lt(), ->diffInHours() — exactement ce dont tu auras besoin à l'Étape 8 pour vérifier "la réservation dure au maximum quatre heures".
+
+Etape4
+
