@@ -78,3 +78,17 @@ Dans la méthode depuisTableau() du DTO lui-même — c'est exactement le rôle 
 Le DTO doit-il contenir la règle de chevauchement ?
 Non. Le chevauchement entre deux réservations est une règle métier qui nécessite d'interroger la base de données (comparer avec les réservations existantes) — ce n'est pas une donnée statique qu'on peut vérifier en isolation au moment de construire le DTO. Cette règle appartient au Service (Étape 8), qui a accès au Repository pour faire cette recherche.
 
+Etape7
+
+Eloquent constitue-t-il déjà un accès aux données ?
+Oui, techniquement — Eloquent implémente déjà le pattern Active Record, qui est une forme d'accès aux données. Salle::find(1) fait déjà tout le travail de requête.
+
+Pourquoi ajouter un Repository au-dessus d'Eloquent ?
+Pour découpler le reste de l'application (Services, Contrôleurs) de la mécanique précise d'Eloquent. Le Service dépend de SalleRepositoryInterface (une abstraction), jamais de Salle:: directement — s'il fallait changer d'ORM un jour, ou ajouter du cache, ou basculer certaines requêtes vers une API externe, seul le Repository changerait, pas le Service qui l'utilise.
+
+Cette abstraction est-elle toujours nécessaire ?
+Pas toujours — pour un petit script isolé, ou un prototype jetable, l'ajouter serait de la sur-ingénierie. Mais dès qu'on veut des tests unitaires sans base de données (contrainte explicite de l'Étape 12 : "les tests unitaires des services ne doivent pas nécessiter MySQL"), l'interface devient indispensable : on peut fournir une implémentation en mémoire (InMemorySalleRepository) à la place de la vraie, dans les tests.
+
+Quel avantage apporte-t-elle ?
+Testabilité (via des doublures), remplaçabilité (changer d'implémentation sans toucher au code appelant), et lisibilité (le Service exprime ses besoins via des noms métier — trouverConflit() — plutôt que des détails techniques Eloquent).
+
