@@ -41,3 +41,12 @@ Parce que manipuler des chaînes de caractères pour des comparaisons de dates e
 
 Etape4
 
+Quelle différence existe entre migration et seeder ?
+Une migration définit la structure de la base (créer une table, ses colonnes, ses types) — c'est le "contenant". Un seeder insère des données dans cette structure déjà existante — c'est le "contenu". Une migration s'exécute une fois par changement de schéma ; un seeder peut être relancé pour repeupler ou compléter des données.
+
+Pourquoi les données initiales doivent-elles être reproductibles ?
+Parce que n'importe qui (toi sur un nouvel ordi, ton prof en clonant le dépôt, un futur collègue) doit pouvoir reconstruire exactement le même état de départ juste en lançant le script — sans dépendre d'un export/import manuel de base de données, qui serait fragile et non versionnable proprement dans git.
+
+Comment empêcher les doublons ?
+En cherchant d'abord si la donnée existe (via un critère unique — ici le nom de la salle) avant de l'insérer, plutôt que d'insérer aveuglément à chaque exécution. firstOrCreate() (ou updateOrCreate() si tu veux aussi mettre à jour les champs existants) encapsule exactement cette logique.
+
