@@ -124,4 +124,4 @@ final class ReservationController
     }
 }
 
-// fichier qui gere ecoute les exception cette classe tete les type dexeption pour les gererles try catch
+// dans le controller fichier on nous demande d'y enlever les try catch de le remplacer par une classe qui gere ecoute les exception cette classe ecoute les type dexeption pour les gererles 
