@@ -6,18 +6,18 @@ namespace App;
 
 use App\Controller\ReservationController;
 use App\Controller\SalleController;
-use App\Repository\EloquentReservationRepository;
-use App\Repository\EloquentSalleRepository;
-use App\Service\AnnulerReservationService;
-use App\Service\CreerReservationService;
-use App\Validation\ReservationValidator;
-use App\Validation\SalleValidator;
 use App\View\View;
 use FastRoute\Dispatcher;
+use Psr\Container\ContainerInterface;
 use function FastRoute\simpleDispatcher;
 
 final class Application
 {
+    public function __construct(
+        private readonly ContainerInterface $container,
+    ) {
+    }
+
     public function run(): void
     {
         $dispatcher = simpleDispatcher(require dirname(__DIR__) . '/routes/web.php');
@@ -56,7 +56,10 @@ final class Application
     {
         [$controleurClasse, $methode] = $handler;
 
-        $controleur = $this->construireControleur($controleurClasse);
+        // Seul point du projet qui interroge directement le conteneur
+        // (contrainte du brief : "seul le point d'entrée récupère
+        // directement un objet dans le conteneur").
+        $controleur = $this->container->get($controleurClasse);
 
         $arguments = array_map(
             static fn(string $valeur) => ctype_digit($valeur) ? (int) $valeur : $valeur,
@@ -68,26 +71,5 @@ final class Application
         if (is_string($resultat)) {
             echo $resultat;
         }
-    }
-
-    private function construireControleur(string $classe): object
-    {
-        $salles = new EloquentSalleRepository();
-        $reservations = new EloquentReservationRepository();
-
-        return match ($classe) {
-            SalleController::class => new SalleController(
-                $salles,
-                new SalleValidator()
-            ),
-            ReservationController::class => new ReservationController(
-                $reservations,
-                $salles,
-                new ReservationValidator(),
-                new CreerReservationService($salles, $reservations),
-                new AnnulerReservationService($reservations)
-            ),
-            default => throw new \RuntimeException("Contrôleur inconnu : $classe"),
-        };
     }
 }
