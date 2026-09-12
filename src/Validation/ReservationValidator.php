@@ -16,8 +16,8 @@ final class ReservationValidator implements ValidatorInterface
             'responsable' => v::stringType()->length(2, 120),
             'email'       => v::email(),
             'motif'       => v::stringType()->length(5, 255),
-            'date_debut' => v::dateTime('Y-m-d\TH:i'),
-            'date_fin'   => v::dateTime('Y-m-d\TH:i'),
+            'date_debut'  => v::dateTime(),
+            'date_fin'    => v::dateTime(),
         ];
 
         $errors = [];
