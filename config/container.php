@@ -39,3 +39,4 @@ return [
     // classes concrètes — il lit leur constructeur et résout chaque
     // dépendance tout seul, récursivement.
 ];
+//pas static pas controller

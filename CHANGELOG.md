@@ -92,3 +92,48 @@ Pas toujours — pour un petit script isolé, ou un prototype jetable, l'ajouter
 Quel avantage apporte-t-elle ?
 Testabilité (via des doublures), remplaçabilité (changer d'implémentation sans toucher au code appelant), et lisibilité (le Service exprime ses besoins via des noms métier — trouverConflit() — plutôt que des détails techniques Eloquent).
 
+Etape8 
+
+Pourquoi ces règles ne sont-elles pas dans le contrôleur ?
+Parce que le contrôleur devrait rester une couche fine qui orchestre (lire la requête, appeler le validateur, appeler le service, rediriger) sans connaître les détails métier. Si les règles étaient dans le contrôleur, elles seraient dupliquées dès qu'un deuxième point d'entrée en aurait besoin (une API, une commande CLI d'admin, un test...) — les centraliser dans le Service permet de les réutiliser partout, une seule fois.
+
+Pourquoi le service dépend-il d'une interface de Repository ?
+Pour pouvoir le tester sans base de données réelle (contrainte explicite de l'Étape 12) — en lui injectant une fausse implémentation en mémoire au lieu de EloquentReservationRepository. Ça découple aussi le Service de l'ORM : s'il fallait changer de moteur de stockage, seul le Repository changerait.
+
+Quelle exception doit être levée en cas de conflit ?
+SalleIndisponibleException — c'est sémantiquement juste : la salle existe, elle est active, mais elle n'est pas disponible pour ce créneau précis à cause d'une réservation existante. Le message d'erreur correspond d'ailleurs exactement au scénario 2 du brief : "La salle est indisponible pendant cette période."
+
+Comment tester le service sans MySQL ?
+En créant une implémentation en mémoire des interfaces (InMemorySalleRepository, InMemoryReservationRepository) qui stockent simplement des tableaux PHP au lieu d'interroger MySQL, et en les injectant dans le Service à la place des vraies implémentations Eloquent. C'est exactement ce qu'on construira à l'Étape 12 — le fait que le Service ne dépende que de l'interface (pas de la classe concrète Eloquent) rend ça possible sans changer une ligne du Service lui-même.
+
+Etape10
+
+  Pourquoi FastRoute ne construit-il pas lui-même le contrôleur ?
+FastRoute a une seule responsabilité : faire correspondre une méthode + un chemin à un handler déclaré. Il ne sait rien de PHP-DI, des dépendances d'un contrôleur, ni de comment les construire — ce n'est pas son rôle. C'est pour ça qu'il retourne juste [SalleController::class, 'index'] (une référence), et laisse à autre chose (ici Application::construireControleur(), bientôt le conteneur) le soin de la résolution réelle.
+
+Quelle différence existe entre 404 et 405 ?
+404 = l'URL demandée ne correspond à aucune route déclarée, peu importe la méthode HTTP utilisée. 405 = l'URL correspond bien à une route existante, mais avec une méthode HTTP différente de celle attendue (ex: DELETE /salles alors que seuls GET et POST sont déclarés pour ce chemin) — FastRoute le sait précisément parce qu'il a déjà trouvé la route, juste pas avec la bonne méthode.
+
+Pourquoi contraindre {id} avec \d+ ?
+Pour que FastRoute rejette immédiatement (en 404) une URL comme /salles/abc, au lieu de la faire passer jusqu'au contrôleur puis planter sur un (int) "abc" qui donnerait 0 silencieusement. La contrainte filtre dès le routage, avant même d'atteindre la logique métier.
+
+Quel composant doit interpréter le handler retourné ?
+Le "routeur applicatif" — ici, Application::run() — c'est lui qui reçoit le tableau [Dispatcher::FOUND, [Classe::class, 'methode'], $params] renvoyé par FastRoute, et qui sait quoi en faire (résoudre la classe, appeler la méthode avec les bons paramètres). FastRoute lui-même s'arrête à "voici quel handler correspond", il n'exécute jamais rien.
+
+Etape11
+
+
+Quelle différence existe entre injection et conteneur ?
+L'injection de dépendances est un principe : une classe reçoit ses dépendances de l'extérieur (via son constructeur), plutôt que de les créer elle-même. Le conteneur est un outil qui automatise ce principe : il sait comment construire chaque classe et satisfaire ses dépendances, sans que tu aies à écrire new partout manuellement.
+
+Qu'est-ce que l'autowiring ?
+La capacité du conteneur à lire automatiquement la signature d'un constructeur (via la réflexion PHP) et à en déduire quelles dépendances injecter, sans configuration explicite — c'est ce qui permet à SalleController, SalleValidator, CreerReservationService etc. de ne jamais apparaître dans config/container.php.
+
+Pourquoi les interfaces nécessitent-elles une définition ?
+Parce que l'autowiring fonctionne en lisant le code d'une classe concrète — une interface n'a pas d'implémentation, donc pas de constructeur à analyser. PHP-DI ne peut pas deviner tout seul que SalleRepositoryInterface doit devenir EloquentSalleRepository plutôt qu'une autre implémentation hypothétique — il faut le dire explicitement.
+
+Pourquoi limiter $container->get() au point d'entrée ?
+Pour éviter que les classes de l'application ne deviennent couplées au conteneur lui-même. Si CreerReservationService faisait $container->get(...) en interne, il dépendrait de PHP-DI directement, et deviendrait impossible à tester sans monter tout le conteneur — cassant la contrainte de l'Étape 12 ("tests unitaires sans MySQL", donc sans dépendances lourdes).
+
+Quel anti-pattern apparaît si toutes les classes interrogent le conteneur ?
+Le Service Locator — un anti-pattern où chaque classe va chercher elle-même ses dépendances dans un registre global, au lieu de les recevoir explicitement via son constructeur. Ça cache les vraies dépendances d'une classe (invisibles depuis sa signature), rend le code difficile à tester en isolation, et crée un couplage global à un seul objet (le conteneur) partout dans l'application.

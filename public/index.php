@@ -24,3 +24,4 @@ $container->get(Capsule::class);
 
 $application = $container->get(Application::class);
 $application->run();
+
